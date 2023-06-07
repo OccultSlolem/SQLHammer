@@ -1,0 +1,25 @@
+{
+    "database": "db.batthealth", // The database to write to
+    "table": "batt", // The table to write to
+    "columns": ["time", "cycle", "amperage"], // The columns to write to
+    "constants": {
+        "L": 20,
+        "t0": 2,
+        "k": 0.1
+    },
+    "equations": {
+        "LINEAR": {
+            "variables": ["t"],
+            "equation": "t"
+        },
+        "SIGMOID": {
+            "variables": ["L", "t", "t0", "k"],
+            "equation": "L / (1 + e^(-k(t - t0)))"
+        }
+    },
+    "template": { // The template for the dummy data to write
+        "time": "EQUATION_TIME",
+        "cycle": 1,
+        "amperage": "EQUATION_SIGMOID"
+    }
+}
