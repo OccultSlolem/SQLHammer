@@ -50,6 +50,7 @@ try:
     COLUMNS = settings["columns"]
     COLUMNS = [f"{COLUMNS[i]}" for i in range(0,len(COLUMNS))]
     COLUMNS = ", ".join(COLUMNS)
+    ITERATIONS = settings["iterations"]
 
     CONSTANTS = settings["constants"]
     EQUATIONS = settings["equations"]
@@ -173,19 +174,19 @@ for j in EQUATIONS:
     exec(f"{j} = {EQUATIONS[j]}")
     if DEBUG_PRINTS: log.debug(f"{j} = {EQUATIONS[j]}")
 
-LINEAR_FROM = {}
+linear_from = {}
 
 # TODO: Increment inside this function (as it is functions must increment themselves)
 def doLinear(key, doFrom):
-    if key not in LINEAR_FROM:
+    if key not in linear_from:
         # if not isinstance(doFrom, int): FIXME: Zero is not an integer???
         #     log.fatal(f"Invalid linear value for {key}. Must be an integer.")
         #     sys.exit(1)
-        LINEAR_FROM[key] = int(doFrom)
+        linear_from[key] = int(doFrom)
     
     # make value available in global scope
-    exec(f"{key} = {int(LINEAR_FROM[key])}")
-    return int(LINEAR_FROM[key])
+    exec(f"{key} = {int(linear_from[key])}")
+    return int(linear_from[key])
 
 # Process template line
 
@@ -195,10 +196,10 @@ for i in CONSTANTS:
     exec_globals[i] = CONSTANTS[i]
 for i in EQUATIONS:
     exec_globals[i] = EQUATIONS[i]
-for i in LINEAR_FROM:
-    exec_globals[i] = LINEAR_FROM[i]
+for i in linear_from:
+    exec_globals[i] = linear_from[i]
 
-def processTemplateLine(key, value):
+def processTemplateLine(key, value, iteration):
     # line is a string that correlates to the value of the key/value pair
     # If the value starts with EQUATION_x, replace it with the value of the equation
     # If the value starts with LINEAR_FROM_x, increment the value by 1 each time you see it
@@ -220,8 +221,8 @@ def processTemplateLine(key, value):
             if i not in CONSTANTS:
                 # make it linear
                 doLinear(i, 0)
-                exec(f"{i} = {LINEAR_FROM[i]}", exec_globals, exec_locals)
-                LINEAR_FROM[i] += 1
+                exec(f"{i} = {linear_from[i]}", exec_globals, exec_locals)
+                linear_from[i] += 1
 
             exec(f"{i} = {i}", exec_globals, exec_locals) # This call is necessary to make the variable available to the exec() call below
             equation = equation.replace(i, f"{i}")
@@ -232,13 +233,16 @@ def processTemplateLine(key, value):
     elif value.startswith("LINEAR_FROM_"):
         exec(f"line = {doLinear(key, value.split('_')[2])}", exec_globals, exec_locals)
         # Increment the variable by 1
-        LINEAR_FROM[key] += 1
+        linear_from[key] += 1
 
     elif value.startswith("CONSTANT_"):
         # Get the constant name
         constant = value.split("_")[1]
         # Replace the constant with its value
         exec(f"line = {CONSTANTS[constant]}", exec_globals, exec_locals)
+    
+    elif value == "CURRENT_ITERATION":
+        exec(f"line = {iteration}", exec_globals, exec_locals)
 
     else:
         # Return the value as-is
@@ -249,24 +253,31 @@ def processTemplateLine(key, value):
 
 # Template
 
-for i in range(int(LOWER_BOUND), int(UPPER_BOUND) + 1):
-    # Process the template
-    TEMPLATE_COPY = copy.deepcopy(TEMPLATE)
-    
-    for j in TEMPLATE:
-        # Get the key/value pair
-        key = j.split(" ")[0]
-        value = j.split(" ")[1]
-        # Process the value
-        value = processTemplateLine(key, value)
-        # Replace the value in the template
-        if DEBUG_PRINTS: log.debug(f"Template: {key} = {value}")
-        TEMPLATE_COPY[TEMPLATE.index(j)] = f"{value}"
-    
-    # Write the template to the database
-    TEMPLATE_COPY = ", ".join(TEMPLATE_COPY)
-    if DEBUG_PRINTS: log.debug(f"INSERT INTO {TABLE} ({COLUMNS}) VALUES ({TEMPLATE_COPY})")
-    c.execute(f"INSERT INTO {TABLE} ({COLUMNS}) VALUES ({TEMPLATE_COPY})")
-    conn.commit()
+def iteration(num):
+    linear_from.clear()
+    for i in range(int(LOWER_BOUND), int(UPPER_BOUND) + 1):
+        # Process the template
+        TEMPLATE_COPY = copy.deepcopy(TEMPLATE)
+        
+        for j in TEMPLATE:
+            # Get the key/value pair
+            key = j.split(" ")[0]
+            value = j.split(" ")[1]
+            # Process the value
+            value = processTemplateLine(key, value, num)
+            # Replace the value in the template
+            if DEBUG_PRINTS: log.debug(f"Template: {key} = {value}")
+            TEMPLATE_COPY[TEMPLATE.index(j)] = f"{value}"
+        
+        # Write the template to the database
+        TEMPLATE_COPY = ", ".join(TEMPLATE_COPY)
+        if DEBUG_PRINTS: log.debug(f"INSERT INTO {TABLE} ({COLUMNS}) VALUES ({TEMPLATE_COPY})")
+        c.execute(f"INSERT INTO {TABLE} ({COLUMNS}) VALUES ({TEMPLATE_COPY})")
+        conn.commit()
+
+# Run the iterations
+for i in range(1, ITERATIONS + 1):
+    if DEBUG_PRINTS: log.debug(f"Iteration {i}")
+    iteration(i)
 
 log.info("Done.")

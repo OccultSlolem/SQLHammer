@@ -1,8 +1,9 @@
 {
     "database": "db.batthealth", // The database to write to.
-    "table": "batt_0", // The table to write to.
-    "columns": ["time", "cycle", "amperage"], // The columns to write to.
-    "column_types": ["REAL", "INTEGER", "REAL"], // The types of the columns to write to. Must be one-to-one with columns.
+    "table": "batt", // The table to write to.
+    "columns": ["battery", "time", "cycle", "amperage"], // The columns to write to.
+    "column_types": ["INTEGER", "REAL", "INTEGER", "REAL"], // The types of the columns to write to. Must be one-to-one with columns.
+    "iterations": 30, // The number of iterations to generate.
     "constants": { // Constants. You can substitute these in equations.
         "L": 20,
         "t0": 2,
@@ -11,12 +12,12 @@
     "equations": { // Equations to generate dummy data. Must be valid python. The math and random modules are available.
         "SIGMOID": {
             "variables": ["L", "t", "t0", "k"],
-            // "equation": "L / ((1 + math.e)**(-k*(t - t0)))",
             "equation": "L  / (1 + (math.e) ** (-k * (t - t0)))",
             "variance": 0.5
         }
     },
     "template": { // The template for the dummy data to write.
+        "battery": "CURRENT_ITERATION",
         "time": "LINEAR_FROM_0",
         "cycle": 1,
         "amperage": "EQUATION_SIGMOID"
