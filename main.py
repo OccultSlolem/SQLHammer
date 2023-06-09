@@ -225,8 +225,7 @@ def processTemplateLine(key, value):
 
             exec(f"{i} = {i}", exec_globals, exec_locals) # This call is necessary to make the variable available to the exec() call below
             equation = equation.replace(i, f"{i}")
-        print(exec_locals)
-        print(f"Equation: {equation}")
+        if DEBUG_PRINTS: log.debug(f"Equation: {equation}")
         exec(f"line = {equation}", exec_globals, exec_locals) # Substitute equation
         exec(f"line += random.uniform(-{VARIANCE}, {VARIANCE})", exec_globals, exec_locals) # Variance
 
